@@ -2,16 +2,55 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
+let supabaseImpl: unknown;
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
-  }
-});
+if (SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY) {
+  supabaseImpl = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: {
+      storage: localStorage,
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  });
+} else {
+  console.error(
+    '[Supabase] Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY. Supabase features are disabled until you configure environment variables.'
+  );
+
+  const notConfigured = async () => ({ data: null, error: new Error('Supabase is not configured') });
+  const chain = () => ({
+    like: () => chain(),
+    eq: () => chain(),
+    gte: () => chain(),
+    order: () => chain(),
+    limit: notConfigured,
+    select: () => ({
+      like: () => chain(),
+      eq: () => chain(),
+      gte: () => chain(),
+      order: () => chain(),
+      limit: notConfigured,
+      then: (resolve: (result: { data: null; error: Error }) => void) =>
+        resolve({ data: null, error: new Error('Supabase is not configured') }),
+    }),
+    insert: notConfigured,
+    update: notConfigured,
+    then: (resolve: (result: { data: null; error: Error }) => void) =>
+      resolve({ data: null, error: new Error('Supabase is not configured') }),
+  });
+
+  supabaseImpl = {
+    from: () => chain(),
+    functions: {
+      invoke: notConfigured,
+    },
+    auth: {
+      getSession: notConfigured,
+    },
+  };
+}
+
+export const supabase = supabaseImpl as ReturnType<typeof createClient<Database>>;

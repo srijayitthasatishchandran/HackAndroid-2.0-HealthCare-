@@ -26,13 +26,14 @@ const Booking = () => {
   const today = new Date().toISOString().split('T')[0];
   const maxDate = new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
 
+  const PHONE_REGEX = /^[6-9]\d{9}$/;
   const validatePhone = (val: string) => {
-    const valid = /^[6-9]\d{9}$/.test(val);
+    const valid = PHONE_REGEX.test(val);
     setPhoneError(val.length > 0 && !valid ? t('invalidPhone') : '');
     return valid;
   };
 
-  const isValid = name.trim().length >= 2 && validatePhone(phone) && date && time;
+  const isValid = Boolean(name.trim().length >= 2 && PHONE_REGEX.test(phone) && date && time);
 
   const handleSubmit = async () => {
     if (!isValid || !selectedClinic || !riskResult || loading) return;
